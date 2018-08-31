@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# Este script cambia el nombre de la
+# base de datos a la que se conectan
+# todos los prpts dentro de la carpeta
+
+if [ "$#" -ne 2 ]
+then
+  echo "ERROR: Número incorrecto de parámetros"
+  echo "Modo de uso: ${0##*/} {ruta prpts a modificar} {nombre de la base nueva}"
+else
+  rutaPrpts="$1"
+  baseNueva="$2"
+
+  echo "Entrando a la ruta $rutaPrpts"
+  cd $rutaPrpts
+
+  for PRPT in $(ls *.prpt)
+  do
+    nombrePRPT="${PRPT%%.*}"
+    echo "Creando carpeta $nombrePRPT"
+    mkdir $nombrePRPT
+    echo "Extrayendo contenidos prpt en carpeta $nombrePRPT"
+    unzip $PRPT -d $nombrePRPT > /dev/null
+    echo "Entrando en carpeta $nombrePRPT"
+    cd $nombrePRPT
+
+    for Archivo in $(find . -name sql-ds*.xml)
+    do
+      echo "Editando conexión de $Archivo"
+      sed -i "s#<data:url>jdbc:mysql://srvBDReportes:3306/.*</data:url>#<data:url>jdbc:mysql://srvBDReportes:3306/$baseNueva</data:url>#g" $Archivo
+      sed -i "s#<data:property name=\"::pentaho-reporting::database-name\">.*</data:property>#<data:property name=\"::pentaho-reporting::database-name\">$baseNueva</data:property>#g" $Archivo
+    done
+
+    echo "Eliminando $PRPT"
+    rm "../$PRPT"
+    echo "Generando nuevo $PRPT"
+    zip -r "../$PRPT" * > /dev/null
+    echo "Saliendo de carpeta $nombrePRPT"
+    cd ..
+    echo "Borrando carpeta $nombrePRPT"
+    rm -rf $nombrePRPT
+  done
+ 
+  echo "Regresando a home"
+  cd
+fi
